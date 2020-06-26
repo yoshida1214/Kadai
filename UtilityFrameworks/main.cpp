@@ -1,154 +1,157 @@
 
-#define _USE_MATH_DEFINES
 #include <iostream>
 #include <math.h>
 using namespace std;
 
-typedef struct _point {
-    double x;
-    double y;
-    
-    _point operator +(const _point p) {
-        _point ans;
-        ans.x = x + p.x;
-        ans.y = y + p.y;
-        return ans;
-    }
-    _point operator -(const _point p) {
-        _point ans;
-        ans.x = x - p.x;
-        ans.y = y - p.y;
-        return ans;
-    }
-    _point operator *(const _point p) {
-        _point ans;
-        ans.x = x * p.x;
-        ans.y = y * p.y;
-        return ans;
-    }
-    _point operator /(const _point p) {
-        _point ans;
-        ans.x = x / p.x;
-        ans.y = y / p.y;
-        return ans;
-    }
+typedef struct _cost {
+    int num;
+    int index;
+    bool operator > (_cost& c) { return num > c.num; }
+    bool operator < (_cost& c) { return num < c.num; }
+    bool operator >= (_cost& c) { return num >= c.num; }
+    bool operator <= (_cost& c) { return num <= c.num; }
+}cost;
 
 
-    _point operator +(const double d) {
-        _point ans;
-        ans.x = x + d;
-        ans.y = y + d;
-        return ans;
-    }
-    _point operator -(const double d) {
-        _point ans;
-        ans.x = x - d;
-        ans.y = y - d;
-        return ans;
-    }
-    _point operator *(const double d) {
-        _point ans;
-        ans.x = x * d;
-        ans.y = y * d;
-        return ans;
-    }
-    _point operator /(const double d) {
-        _point ans;
-        ans.x = x / d;
-        ans.y = y / d;
-        return ans;
-    }
-}point;
 
+template<typename T>
+void Partition(T* in, int& index, const int cnt, const int startNum, const int endNum) {
 
-point* _KochCurve(const point pPoint[2],int& pointCnt,const int kochCnt) {
-    point* outPoint;
-    int cnt = 1;
-    if (kochCnt > 0) {
-        for (int i = 0;i < kochCnt;i++) {
-            cnt *= 4;
+    // 最後の要素をパーティションに設定
+    T partition = in[endNum];
+    int num = startNum - 1;
+
+    for (int i = startNum; i < endNum;i++) {
+        if (in[i] <= partition) {
+            num++;
+            T temp = in[num];
+            in[num] = in[i];
+            in[i] = temp;
         }
-        pointCnt = cnt + 1;
-        outPoint = new point[pointCnt];
-        point newPoint[5];
-        double length = sqrt((pPoint[1].x - pPoint[0].x) * (pPoint[1].x - pPoint[0].x) + (pPoint[1].y - pPoint[0].y) * (pPoint[1].y - pPoint[0].y));
-        point normal,vec;
-        normal.x = (pPoint[1].x - pPoint[0].x) / length;
-        normal.y = (pPoint[1].y - pPoint[0].y) / length;
-
-
-        newPoint[0] = pPoint[0];
-        newPoint[1] = (normal * (length / 3)) + pPoint[0];
-        vec = newPoint[1] - newPoint[0];
-        newPoint[2].x = vec.x * cos(M_PI / 3) - vec.y * sin(M_PI / 3);
-        newPoint[2].y = vec.x * sin(M_PI / 3) + vec.y * cos(M_PI / 3);
-        newPoint[2] = newPoint[2] + newPoint[1];
-        newPoint[3] = (normal * (length / 3) * 2) + pPoint[0];
-        newPoint[4] = pPoint[1];
-
-        point* buff;
-        point  p[2];
-        int num = 0;
-        for (int i = 0;i < 4;i++) {
-            p[0] = newPoint[i];
-            p[1] = newPoint[i+1];
-
-            buff = _KochCurve(p, cnt, kochCnt - 1);
-            if (buff != nullptr) {
-                for (int j = 0;j < (cnt - 1);j++) {
-                    outPoint[num] = buff[j];
-                    num++;
-                }
-                delete[] buff;
-            }
-            else {
-                outPoint[num] = newPoint[i];
-                num++;
-            }
-        }
-        outPoint[num] = newPoint[4];
-        return outPoint;
     }
-    else {
-        outPoint = nullptr;
-        pointCnt = 0;
-        return outPoint;
+
+    T temp = in[num + 1];
+    in[num + 1] = in[endNum];
+    in[endNum] = temp;
+    index = num + 1;
+}
+
+template<typename T>
+void _QuickSort(T* in, const int cnt, const int startNum, const int endNum) {
+    if (startNum < endNum) {
+        int index;
+        Partition<T>(in, index, cnt, startNum, endNum);
+        _QuickSort<T>(in, cnt, startNum, index - 1);
+        _QuickSort<T>(in, cnt, index + 1, endNum);
     }
 }
 
-point* KochCurve(const point pPoint[2], int& pointCnt, const int kochCnt) {
-    point* outPoint;
-    if (kochCnt == 0) {
-        outPoint = new point[2];
-        outPoint[0] = pPoint[0];
-        outPoint[1] = pPoint[1];
-        pointCnt = 2;
-        return outPoint;
-    }
-    return _KochCurve(pPoint, pointCnt, kochCnt);
+template<typename T>
+void QuickSort(T* in, const int cnt) {
+    _QuickSort<T>(in, cnt, 0, cnt - 1);
 }
 
-
-
-int main() {
-    int cnt;
-    /**/
-    // 入力
-    cin >> cnt;
-
-    point p[2];
-    p[0].x = 0;
-    p[0].y = 0;
-    p[1].x = 100;
-    p[1].y = 0;
-    point* ans;
-    ans = KochCurve(p, cnt, cnt);
+int MinimumCostSort(int *in,int cnt) {
+    int cost = 0;
+    int min,chngeCnt,start;
+    min = -1;
+    start = -1;
+    bool loopFlag = true;
+    _cost* result = new _cost[cnt];
+    _cost* input = new _cost[cnt];
+    for (int i = 0;i < cnt;i++) {
+        result[i].num = in[i];
+        result[i].index = i;
+        input[i].num = in[i];
+    }
+    QuickSort(result, cnt);
 
     for (int i = 0;i < cnt;i++) {
-        //cout << "[" << i << "]  ==  (" << ans[i].x << "," << ans[i].y << ")" << endl;
-        cout << ans[i].x << " " << ans[i].y << endl;
+        input[result[i].index].index = i;
     }
 
-    delete[] ans;
+
+    while (loopFlag) {
+
+        if (start < 0) {
+            for (int i = 0;i < cnt;i++) {
+                // スタートの位置を求める
+                if (input[i].num != result[i].num) {
+                    if (start < 0)
+                        start = i;
+                    else if (input[i].num < input[start].num)
+                        start = i;
+                }
+                
+                // 最小値を求める
+                if (min < 0)
+                    min = i;
+                else if (input[i].num < input[min].num)
+                    min = i;
+            }
+            if (start < 0) {
+                break;
+            }
+        }
+
+        // 交換回数を求める
+        chngeCnt = 0;
+        for (int check = start; input[start].num != result[check].num;check = result[check].index) {
+            chngeCnt++;
+        }
+
+
+        // 最小値とスタートの値を交換したほうが効率がいい場合は交換を行う
+        if ((input[start].num + input[min].num) * 2 < chngeCnt * (input[start].num - input[min].num)) {
+
+            _cost temp = input[min];
+            input[min] = input[start];
+            input[start] = temp;
+            cost += input[start].num + input[min].num;
+
+            // result indexの交換
+            result[input[start].index].index = start;
+            result[input[min].index].index = min;
+        }
+
+
+        int index = result[start].index;
+        _cost temp = input[index];
+        input[index] = input[start];
+        input[start] = temp;
+        cost += input[start].num + input[index].num;
+
+        // result indexの交換
+        index = result[input[start].index].index;
+        result[input[start].index].index = result[temp.index].index;
+        result[temp.index].index = index;
+
+        start = result[start].index;
+
+        if (result[start].num == input[start].num) {
+            start = -1;
+        }
+    }
+    
+    return cost;
+}
+
+int main() {
+    int cnt,cost;
+    int *n;
+    // 入力
+    cin >> cnt;
+    n = new int[cnt];
+
+    for (int i = 0;i < cnt;i++) {
+        cin >> n[i];
+    }
+    
+    cost = MinimumCostSort(n, cnt);
+    cout << cost << endl;
+
+
+    cin >> cnt;
+    delete[] n;
     return 0;
 }
